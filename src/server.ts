@@ -5,21 +5,31 @@ const port = 3000;
 const app = express();
 const prisma = new PrismaClient();
 
-app.get ('/movies', async (req, res) => {
+app.use(express.json());
+
+app.get('/movies', async (req, res) => {
     const movies = await prisma.movie.findMany({
-        orderBy:{title:"asc"},
-        include:{ genres:true,languages:true}
+        orderBy: { title: "asc" },
+        include: { genres: true, languages: true }
     });
     res.json(movies);
-})
+});
 
-app.use (express.json());
-
-app.post('/movies', async (req, res) => {
-
-const { title, genre_id, language_id, oscar_count, release_date } = req.body;
+app.post("/movies", async (req, res) => {
+    const { title, genre_id, language_id, oscar_count, release_date } = req.body;
 
 try {
+
+    const movieWithSameTitle = await prisma.movie.findFirst({
+        where: { 
+            title: { equals: title, mode: "insensitive" }
+        }, 
+    });
+    if(movieWithSameTitle){
+        return res
+        .status(409)
+        .send({ message: "Movie already exists" }) }
+
     await prisma.movie.create({
     data: { 
     title, 

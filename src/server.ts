@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import {PrismaClient} from '@prisma/client';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from '../swagger.json';
@@ -50,26 +50,40 @@ res.status(201).send();
 
 app.put("/movies/:id", async (req, res) => {
     const id = Number(req.params.id);
-    try{
-        const movie = await prisma.movie.findUnique({
-          where: { id },
-        });
-     
-        if (!movie) {
-          return res.status(404).send({ message: "Filme não encontrado" });
+  
+    try {
+      const movie = await prisma.movie.findUnique({
+        where: { id },
+      });
+  
+      if (!movie) {
+        return res.status(404).send({ message: "Filme não encontrado" });
+      }
+  
+      const data = { ...req.body };
+  
+      if (data.release_date) {
+        const releaseDateParsed = new Date(data.release_date);
+  
+        if (isNaN(Number(releaseDateParsed))) {
+          return res.status(400).send({ message: "Data de lançamento inválida" });
         }
-     
-        const data = { ...req.body };
-        data.release_date = data.release_date
-          ? new Date(data.release_date)
-          : undefined;
-     
-          await prisma.movie.update({ where: { id }, data });
-       }catch(error){
-        return res.status(500).send({ message: "Falha ao atualizar o registro" });
-       }
-       res.status(200).send();
-     });
+  
+        data.release_date = releaseDateParsed;
+      }
+  
+      await prisma.movie.update({
+        where: { id },
+        data,
+      });
+  
+      return res.status(200).send({ message: "Filme atualizado com sucesso" });
+    } catch (error) {
+      console.error("Erro ao atualizar o filme:", error);
+      return res.status(500).send({ message: "Falha ao atualizar o registro" });
+    }
+  });
+  
 
 
 app.delete('/movies/:id', async (req, res) => {
